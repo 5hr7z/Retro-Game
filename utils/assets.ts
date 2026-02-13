@@ -21,6 +21,32 @@ const createPixelSprite = (color: string, type: string): string => {
       ctx.fillRect(12, 6, 2, 2);
       ctx.fillRect(18, 6, 2, 2);
     } 
+    else if (type === 'madame_spice') {
+      // Long dark hair
+      ctx.fillStyle = '#2a1d1d';
+      ctx.fillRect(8, 4, 16, 16); 
+      ctx.fillRect(6, 6, 4, 18); // Hair falling down sides
+      ctx.fillRect(22, 6, 4, 18);
+      
+      // Face
+      ctx.fillStyle = '#ffccaa'; 
+      ctx.fillRect(10, 6, 12, 10);
+      
+      // Pink Dress
+      ctx.fillStyle = '#ff0055'; 
+      ctx.fillRect(10, 16, 12, 14);
+      ctx.fillStyle = '#ff6699'; // Dress detail
+      ctx.fillRect(12, 18, 8, 8);
+
+      // Eyes
+      ctx.fillStyle = 'black';
+      ctx.fillRect(12, 9, 2, 2);
+      ctx.fillRect(18, 9, 2, 2);
+      
+      // Smile
+      ctx.fillStyle = '#a00';
+      ctx.fillRect(14, 13, 4, 1);
+    }
     else if (type === 'pineapple') {
       ctx.fillStyle = '#ffd700'; 
       ctx.fillRect(10, 12, 12, 14);
@@ -138,6 +164,7 @@ const createPixelSprite = (color: string, type: string): string => {
   
 export const ASSETS = {
     hero: createPixelSprite('#00aaff', 'hero'),
+    madame_spice: createPixelSprite('#ff0055', 'madame_spice'),
     wall: createPixelSprite('#b06c85', 'wall'),
     npc: createPixelSprite('#ffaa00', 'npc'),
     key: createPixelSprite('', 'key'),

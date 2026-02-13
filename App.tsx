@@ -80,22 +80,33 @@ function App() {
       )}
 
       {gameState === GameState.VICTORY && (
-        <div className="text-center z-10 text-white bg-black/90 p-12 border-4 border-pink-500 relative overflow-hidden">
+        <div className="text-center z-10 text-white bg-black/90 p-8 border-4 border-pink-500 relative overflow-hidden w-full max-w-3xl h-[90vh] flex flex-col items-center justify-center">
            {/* Falling Hearts Effect */}
            <div className="absolute inset-0 pointer-events-none opacity-20 animate-pulse text-red-500 text-4xl">
              ♥ ♥ ♥ ♥ ♥
            </div>
 
-          <h2 className="text-4xl text-pink-500 mb-4 animate-bounce">MISSION ACCOMPLISHED</h2>
-          <div className="text-6xl mb-8">💖 💍 💖</div>
+          <h2 className="text-3xl md:text-4xl text-pink-500 mb-4 animate-bounce">MISSION ACCOMPLISHED</h2>
+          <div className="text-6xl mb-6">💖 💍 💖</div>
           
-          <p className="mb-8 text-lg max-w-md mx-auto leading-relaxed">
+          <p className="mb-6 text-sm md:text-lg max-w-md mx-auto leading-relaxed">
             Happy Valentine's Day, Harvey!
             <br/><br/>
             I love you more than Biryani.
-            <br/><br/>
-            <span className="text-yellow-400 text-sm">♫ Now Playing: "I Love You Baby" - Frank Sinatra ♫</span>
           </p>
+
+          <div className="w-full max-w-md mb-6">
+            <iframe 
+              style={{ borderRadius: '12px' }} 
+              src="https://open.spotify.com/embed/track/6ft9PAgNOjmZ2kFVP7LGqb?utm_source=generator" 
+              width="100%" 
+              height="152" 
+              frameBorder="0" 
+              allowFullScreen 
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+              loading="lazy"
+            ></iframe>
+          </div>
 
           <button onClick={resetGame} className="px-6 py-3 bg-pink-600 text-white font-bold hover:bg-pink-500">REPLAY MEMORIES</button>
         </div>

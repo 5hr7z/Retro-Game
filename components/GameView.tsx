@@ -12,6 +12,15 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [levelIndex, setLevelIndex] = useState(0);
   
+  // GM Mode State
+  const [showDebug, setShowDebug] = useState(false);
+  const [godMode, setGodMode] = useState(false);
+  const godModeRef = useRef(false);
+
+  useEffect(() => {
+    godModeRef.current = godMode;
+  }, [godMode]);
+
   // UI States
   const [dialogue, setDialogue] = useState<string[] | null>(null);
   const [dialogueIndex, setDialogueIndex] = useState(0);
@@ -34,9 +43,11 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
   const moveTargetPos = useRef<Position>({ x: 0, y: 0 });
   
   // Enemy Movement Refs
-  const lastEnemyUpdate = useRef<number>(0);
   const chaosTimer = useRef<number>(0);
   const controlsFlipped = useRef<boolean>(false);
+  
+  // Lvl 10 specific
+  const balloonsRef = useRef<{x: number, y: number, speed: number, offset: number}[]>([]);
 
   const currentLevel = LEVELS[levelIndex];
 
@@ -50,7 +61,6 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
     initialEntities.forEach((e: Entity) => {
         if (e.type === EntityType.ENEMY) {
             e.originalPos = { ...e.pos };
-            // Convert grid pos to visual pos for smooth movement
             e.pos = { x: e.pos.x * TILE_SIZE, y: e.pos.y * TILE_SIZE }; 
             e.dir = e.dir || 1;
         }
@@ -62,85 +72,98 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
     isMoving.current = false;
     setShake(0);
     controlsFlipped.current = false;
+    setInventory([]); // Reset inventory on level change? Or keep it? Usually reset per level for puzzle games like this or keep logic consistent. 
+    // Ideally inventory resets if levels are self-contained puzzles. 
+    // Based on levels, they seem self-contained. Resetting inventory to avoid carrying keys over.
+    setInventory([]); 
     
     setFeedback(`START: ${currentLevel.name}`);
     setTimeout(() => setFeedback(null), 2000);
 
-  }, [levelIndex, currentLevel]);
-
-  // Handle Input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (dialogue || quizEntity || feedback) {
-        if (dialogue && e.key === ' ') {
-          if (dialogueIndex < dialogue.length - 1) {
-             setDialogueIndex(prev => prev + 1);
-          } else {
-             setDialogue(null);
-             setDialogueIndex(0);
-          }
-        }
-        return;
-      }
-
-      if (isMoving.current) return;
-
-      let dx = 0;
-      let dy = 0;
-
-      // Chaos Logic for Level 8
-      let isFlipped = currentLevel.chaosMode ? controlsFlipped.current : false;
-      
-      const up = isFlipped ? 'ArrowDown' : 'ArrowUp';
-      const down = isFlipped ? 'ArrowUp' : 'ArrowDown';
-      const left = isFlipped ? 'ArrowRight' : 'ArrowLeft';
-      const right = isFlipped ? 'ArrowLeft' : 'ArrowRight';
-
-      if (e.key === up || e.key === 'w') dy = -1;
-      if (e.key === down || e.key === 's') dy = 1;
-      if (e.key === left || e.key === 'a') dx = -1;
-      if (e.key === right || e.key === 'd') dx = 1;
-
-      if (dx !== 0 || dy !== 0) {
-        attemptMove(dx, dy);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dialogue, dialogueIndex, quizEntity, feedback, currentLevel]);
-
-  const attemptMove = (dx: number, dy: number) => {
-    const newX = playerGridPos.current.x + dx;
-    const newY = playerGridPos.current.y + dy;
-
-    if (newX < 0 || newX >= currentLevel.gridSize || newY < 0 || newY >= currentLevel.gridSize) return;
-    if (currentLevel.mapData[newY] && currentLevel.mapData[newY][newX] === 1) return;
-
-    // Check Grid entities (Static ones)
-    const collidedEntity = entitiesRef.current.find(e => 
-       e.type !== EntityType.ENEMY && e.pos.x === newX && e.pos.y === newY
-    );
-
-    if (collidedEntity) {
-      if (collidedEntity.type === EntityType.DOOR && collidedEntity.isLocked) {
-        handleDoorInteraction(collidedEntity);
-        return;
-      }
-      if (collidedEntity.type === EntityType.OBSTACLE || collidedEntity.type === EntityType.NPC) {
-         handleCollision(collidedEntity);
-         return; 
-      }
+    // Initialize balloons for Lvl 10
+    if (levelIndex === 9) {
+        balloonsRef.current = Array.from({length: 20}, () => ({
+            x: Math.random() * CANVAS_WIDTH,
+            y: CANVAS_HEIGHT + Math.random() * 200,
+            speed: 0.5 + Math.random(),
+            offset: Math.random() * Math.PI * 2
+        }));
     }
 
-    isMoving.current = true;
-    moveStartPos.current = { ...playerVisualPos.current };
-    moveTargetPos.current = { x: newX * TILE_SIZE, y: newY * TILE_SIZE };
-    playerGridPos.current = { x: newX, y: newY };
-    movementProgress.current = 0;
+  }, [levelIndex, currentLevel]);
 
-    if (collidedEntity) {
-       handleCollision(collidedEntity);
+  const takeDamage = () => {
+      if (godModeRef.current) return;
+
+      setHearts(prev => {
+         const h = prev - 1;
+         if (h <= 0) setTimeout(() => onGameOver(false), 500);
+         return h;
+      });
+      setFeedback("OUCH!");
+      setShake(15);
+      setTimeout(() => { setFeedback(null); setShake(0); }, 800);
+  };
+
+  const submitQuiz = () => {
+    if (!quizEntity) return;
+    const correct = quizEntity.quizAnswer?.toLowerCase().trim();
+    const attempt = quizInput.toLowerCase().trim();
+
+    if (attempt === correct || (correct && attempt.includes(correct))) {
+       setQuizEntity(null);
+       quizEntity.isLocked = false;
+       entitiesRef.current = entitiesRef.current.filter(e => e.id !== quizEntity.id);
+       setFeedback("CORRECT! Smart Boy.");
+       setTimeout(() => setFeedback(null), 1500);
+    } else {
+       setFeedback("WRONG! Try again.");
+       if (!godModeRef.current) {
+          setHearts(h => h - 1);
+       }
+       setShake(10);
+       setTimeout(() => { setFeedback(null); setShake(0); }, 1000);
+    }
+  };
+
+  const triggerFinale = () => {
+      setDialogue([
+          "Madame Spice: You found me...", 
+          "Harvey: I would search every universe for you.", 
+          "Madame Spice: Even the one with pineapple pizza?",
+          "Harvey: Especially that one.",
+          "Madame Spice: I love you, my Desi Firangan.",
+          "Madame Spice: Happy Valentine's Day! ❤️"
+      ]);
+      setDialogueIndex(0);
+  };
+
+  const handleCollision = (entity: Entity) => {
+    if (entity.type === EntityType.NPC) {
+      if (entity.id === 'Madame Spice') {
+          triggerFinale();
+      } else if (entity.message) {
+          setDialogue(entity.message);
+          setDialogueIndex(0);
+      }
+    }
+    else if (entity.type === EntityType.COLLECTIBLE || entity.type === EntityType.KEY) {
+      entitiesRef.current = entitiesRef.current.filter(e => e.id !== entity.id);
+      setInventory(prev => [...prev, entity.id]);
+      setFeedback(`Found ${entity.id}!`);
+      setTimeout(() => setFeedback(null), 1000);
+    }
+    else if (entity.type === EntityType.TRAP || entity.type === EntityType.OBSTACLE) {
+       if (entity.type === EntityType.TRAP) {
+         takeDamage();
+       }
+    }
+    else if (entity.type === EntityType.EXIT) {
+      if (levelIndex < LEVELS.length - 1) {
+        setLevelIndex(prev => prev + 1);
+      } else {
+        onGameOver(true);
+      }
     }
   };
 
@@ -162,65 +185,86 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
     }
   };
 
-  const submitQuiz = () => {
-    if (!quizEntity) return;
-    const correct = quizEntity.quizAnswer?.toLowerCase().trim();
-    const attempt = quizInput.toLowerCase().trim();
+  const attemptMove = (dx: number, dy: number) => {
+    const newX = playerGridPos.current.x + dx;
+    const newY = playerGridPos.current.y + dy;
 
-    if (attempt === correct || (correct && attempt.includes(correct))) {
-       setQuizEntity(null);
-       quizEntity.isLocked = false;
-       entitiesRef.current = entitiesRef.current.filter(e => e.id !== quizEntity.id);
-       setFeedback("CORRECT! Smart Boy.");
-       setTimeout(() => setFeedback(null), 1500);
-    } else {
-       setFeedback("WRONG! Try again.");
-       setHearts(h => h - 1);
-       setShake(10);
-       setTimeout(() => { setFeedback(null); setShake(0); }, 1000);
-    }
-  };
+    if (newX < 0 || newX >= currentLevel.gridSize || newY < 0 || newY >= currentLevel.gridSize) return;
+    if (currentLevel.mapData[newY] && currentLevel.mapData[newY][newX] === 1) return;
 
-  const takeDamage = () => {
-      setHearts(prev => {
-         const h = prev - 1;
-         if (h <= 0) setTimeout(() => onGameOver(false), 500);
-         return h;
-      });
-      setFeedback("OUCH!");
-      setShake(15);
-      setTimeout(() => { setFeedback(null); setShake(0); }, 800);
-  };
+    const collidedEntity = entitiesRef.current.find(e => 
+       e.type !== EntityType.ENEMY && e.pos.x === newX && e.pos.y === newY
+    );
 
-  const handleCollision = (entity: Entity) => {
-    if (entity.type === EntityType.NPC && entity.message) {
-      setDialogue(entity.message);
-      setDialogueIndex(0);
-    }
-    else if (entity.type === EntityType.COLLECTIBLE) {
-      entitiesRef.current = entitiesRef.current.filter(e => e.id !== entity.id);
-      setInventory(prev => [...prev, entity.id]);
-      setFeedback(`Found ${entity.id}!`);
-      setTimeout(() => setFeedback(null), 1000);
-    }
-    else if (entity.type === EntityType.TRAP || entity.type === EntityType.OBSTACLE) {
-       if (entity.type === EntityType.TRAP) {
-         takeDamage();
-       }
-    }
-    else if (entity.type === EntityType.EXIT) {
-      if (levelIndex < LEVELS.length - 1) {
-        setLevelIndex(prev => prev + 1);
-      } else {
-        onGameOver(true);
+    if (collidedEntity) {
+      if (collidedEntity.type === EntityType.DOOR && collidedEntity.isLocked) {
+        handleDoorInteraction(collidedEntity);
+        return;
+      }
+      if (collidedEntity.type === EntityType.OBSTACLE || collidedEntity.type === EntityType.NPC) {
+         handleCollision(collidedEntity);
+         // Don't move if it's an NPC or Obstacle
+         return; 
       }
     }
+
+    isMoving.current = true;
+    moveStartPos.current = { ...playerVisualPos.current };
+    moveTargetPos.current = { x: newX * TILE_SIZE, y: newY * TILE_SIZE };
+    playerGridPos.current = { x: newX, y: newY };
+    movementProgress.current = 0;
+
+    if (collidedEntity) {
+       handleCollision(collidedEntity);
+    }
   };
 
-  // Update Enemy Logic
+  // Handle Input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (dialogue || quizEntity || feedback) {
+        if (dialogue && e.key === ' ') {
+          if (dialogueIndex < dialogue.length - 1) {
+             setDialogueIndex(prev => prev + 1);
+          } else {
+             setDialogue(null);
+             setDialogueIndex(0);
+             // Special check for winning
+             if (currentLevel.id === 10) { // Finale finished
+                onGameOver(true);
+             }
+          }
+        }
+        return;
+      }
+
+      if (isMoving.current) return;
+
+      let dx = 0;
+      let dy = 0;
+      let isFlipped = currentLevel.chaosMode ? controlsFlipped.current : false;
+      const up = isFlipped ? 'ArrowDown' : 'ArrowUp';
+      const down = isFlipped ? 'ArrowUp' : 'ArrowDown';
+      const left = isFlipped ? 'ArrowRight' : 'ArrowLeft';
+      const right = isFlipped ? 'ArrowLeft' : 'ArrowRight';
+
+      if (e.key === up || e.key === 'w') dy = -1;
+      if (e.key === down || e.key === 's') dy = 1;
+      if (e.key === left || e.key === 'a') dx = -1;
+      if (e.key === right || e.key === 'd') dx = 1;
+
+      if (dx !== 0 || dy !== 0) {
+        attemptMove(dx, dy);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dialogue, dialogueIndex, quizEntity, feedback, currentLevel]);
+
+
   const updateEnemies = () => {
     const now = Date.now();
-    // Only update chaos timer every second
     if (currentLevel.chaosMode && now - chaosTimer.current > 3000) {
         chaosTimer.current = now;
         controlsFlipped.current = Math.random() > 0.5;
@@ -248,7 +292,6 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
              if (dist > (entity.patrolRange || 3) * TILE_SIZE) entity.dir = (entity.dir || 1) * -1;
         }
         else if (entity.behavior === 'chase') {
-             // Move towards player
              const targetX = playerVisualPos.current.x;
              const targetY = playerVisualPos.current.y;
              const angle = Math.atan2(targetY - entity.pos.y, targetX - entity.pos.x);
@@ -263,27 +306,23 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
              entity.pos.x += Math.cos(angle) * speed;
              entity.pos.y += Math.sin(angle) * speed;
              
-             // Bounce off bounds mostly
              if (entity.pos.x < 0 || entity.pos.x > currentLevel.gridSize * TILE_SIZE) entity.dir = angle + Math.PI;
              if (entity.pos.y < 0 || entity.pos.y > currentLevel.gridSize * TILE_SIZE) entity.dir = angle + Math.PI;
         }
 
-        // Enemy Collision with Player
         const pCx = playerVisualPos.current.x + TILE_SIZE/2;
         const pCy = playerVisualPos.current.y + TILE_SIZE/2;
         const eCx = entity.pos.x + TILE_SIZE/2;
         const eCy = entity.pos.y + TILE_SIZE/2;
         
         const dist = Math.sqrt(Math.pow(pCx - eCx, 2) + Math.pow(pCy - eCy, 2));
-        if (dist < TILE_SIZE * 0.6) {
-             // Hit!
+        
+        if (dist < TILE_SIZE * 0.6 && !godModeRef.current) {
              takeDamage();
-             // Knockback
              playerVisualPos.current.x -= (eCx - pCx) * 2;
              playerVisualPos.current.y -= (eCy - pCy) * 2;
              moveTargetPos.current = { ...playerVisualPos.current };
              isMoving.current = false;
-             // Update grid pos to match approx
              playerGridPos.current = { 
                  x: Math.floor((playerVisualPos.current.x + TILE_SIZE/2) / TILE_SIZE),
                  y: Math.floor((playerVisualPos.current.y + TILE_SIZE/2) / TILE_SIZE)
@@ -292,14 +331,12 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
     });
   };
 
-  // Game Loop
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Movement Logic
     if (isMoving.current) {
       movementProgress.current += 0.2; 
       if (movementProgress.current >= 1) {
@@ -314,10 +351,8 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
       }
     }
 
-    // AI Logic
     updateEnemies();
 
-    // Shake Effect logic
     let shakeX = 0;
     let shakeY = 0;
     if (shake > 0) {
@@ -325,18 +360,34 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
         shakeY = (Math.random() - 0.5) * shake;
     }
 
-    // Clear
     ctx.fillStyle = currentLevel.background;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Camera
+    // Lvl 10 Background Balloons
+    if (levelIndex === 9) {
+        balloonsRef.current.forEach(b => {
+             b.y -= b.speed;
+             if (b.y < -50) b.y = CANVAS_HEIGHT + 50;
+             const xOsc = Math.sin(Date.now() / 500 + b.offset) * 20;
+             
+             ctx.fillStyle = `hsl(${b.offset * 100}, 70%, 70%)`;
+             ctx.beginPath();
+             ctx.arc(b.x + xOsc, b.y, 8, 0, Math.PI * 2);
+             ctx.fill();
+             ctx.beginPath();
+             ctx.moveTo(b.x + xOsc, b.y + 8);
+             ctx.lineTo(b.x + xOsc, b.y + 20);
+             ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+             ctx.stroke();
+        });
+    }
+
     const cameraX = Math.max(0, Math.min(playerVisualPos.current.x - CANVAS_WIDTH / 2 + TILE_SIZE/2, (currentLevel.gridSize * TILE_SIZE) - CANVAS_WIDTH));
     const cameraY = Math.max(0, Math.min(playerVisualPos.current.y - CANVAS_HEIGHT / 2 + TILE_SIZE/2, (currentLevel.gridSize * TILE_SIZE) - CANVAS_HEIGHT));
     
     ctx.save();
     ctx.translate(-cameraX + shakeX, -cameraY + shakeY);
 
-    // Draw Map
     for (let y = 0; y < currentLevel.mapData.length; y++) {
       for (let x = 0; x < currentLevel.mapData[y].length; x++) {
         const tile = currentLevel.mapData[y][x];
@@ -344,7 +395,7 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
         let isVisible = true;
         if (currentLevel.fogOfWar) {
           const dist = Math.sqrt(Math.pow(x * TILE_SIZE - playerVisualPos.current.x, 2) + Math.pow(y * TILE_SIZE - playerVisualPos.current.y, 2));
-          if (dist > 250) isVisible = false; // Pixel distance
+          if (dist > 250) isVisible = false;
         }
 
         if (isVisible) {
@@ -360,9 +411,6 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
                 img.src = ASSETS.wall;
                 ctx.drawImage(img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 ctx.globalAlpha = 1.0;
-             } else {
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                ctx.fillRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, 4, 4);
              }
           }
         } else {
@@ -372,15 +420,8 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
       }
     }
 
-    // Draw Entities
     entitiesRef.current.forEach(entity => {
-      // Enemy Vis check
-      if (currentLevel.fogOfWar && entity.type !== EntityType.EXIT) {
-         const dist = Math.sqrt(Math.pow(entity.pos.x - playerVisualPos.current.x, 2) + Math.pow(entity.pos.y - playerVisualPos.current.y, 2));
-         if (dist > 250) return;
-      }
-
-      // For Enemies, pos is pixels. For others, pos is grid.
+      // FIX: Calculate pixel positions for everyone before fog check
       let x, y;
       if (entity.type === EntityType.ENEMY) {
           x = entity.pos.x;
@@ -389,6 +430,12 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
           x = entity.pos.x * TILE_SIZE;
           y = entity.pos.y * TILE_SIZE;
       }
+
+      if (currentLevel.fogOfWar && entity.type !== EntityType.EXIT) {
+         // Use the pixel coordinates x/y calculated above
+         const dist = Math.sqrt(Math.pow(x - playerVisualPos.current.x, 2) + Math.pow(y - playerVisualPos.current.y, 2));
+         if (dist > 250) return;
+      }
       
       let img = new Image();
       if (entity.spriteKey) {
@@ -396,8 +443,7 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
         img.src = ASSETS[entity.spriteKey];
       } else {
         if (entity.type === EntityType.NPC) img.src = ASSETS.npc;
-        else if (entity.type === EntityType.COLLECTIBLE) img.src = ASSETS.item;
-        else if (entity.type === EntityType.KEY) img.src = ASSETS.key;
+        else if (entity.type === EntityType.KEY || entity.type === EntityType.COLLECTIBLE) img.src = ASSETS.key;
         else if (entity.type === EntityType.DOOR) img.src = ASSETS.door;
         else if (entity.type === EntityType.TRAP) img.src = ASSETS.trap;
         else if (entity.type === EntityType.OBSTACLE) {
@@ -415,7 +461,6 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
       }
     });
 
-    // Draw Player
     const pImg = new Image();
     pImg.src = ASSETS.hero;
     ctx.drawImage(pImg, playerVisualPos.current.x, playerVisualPos.current.y, TILE_SIZE, TILE_SIZE);
@@ -446,11 +491,42 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
         </div>
       </div>
 
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+         {/* GM Button */}
+         <button onClick={() => setShowDebug(!showDebug)} className="text-pink-500 hover:text-white text-xs bg-black/50 px-2 py-1 border border-pink-500/50">
+            GM
+         </button>
          <button onClick={onExit} className="text-white hover:text-red-400 text-xs bg-black/50 px-3 py-1 border border-white/50">
             ABORT MISSION
          </button>
       </div>
+
+      {/* DEBUG PANEL */}
+      {showDebug && (
+        <div className="absolute top-12 right-4 z-50 bg-black/95 border-2 border-green-500 p-4 w-56 shadow-xl">
+           <h3 className="text-green-500 text-xs font-bold mb-3 border-b border-green-800 pb-1">GAME MASTER CONTROLS</h3>
+           
+           <div className="flex items-center gap-2 mb-4 cursor-pointer hover:bg-green-900/30 p-1 rounded" onClick={() => setGodMode(!godMode)}>
+              <div className={`w-3 h-3 border border-green-500 ${godMode ? 'bg-green-500' : ''}`}></div>
+              <span className="text-green-400 text-xs">GOD MODE (INVINCIBLE)</span>
+           </div>
+
+           <div className="text-[10px] text-green-600 mb-1">WARP TO LEVEL:</div>
+           <div className="grid grid-cols-4 gap-1">
+              {LEVELS.map((l, i) => (
+                  <button 
+                    key={l.id}
+                    onClick={() => {
+                        setLevelIndex(i);
+                    }}
+                    className={`text-[10px] border border-green-800 p-1 hover:bg-green-700 hover:text-black transition-colors ${levelIndex === i ? 'bg-green-500 text-black font-bold' : 'text-green-500'}`}
+                  >
+                    {l.id}
+                  </button>
+              ))}
+           </div>
+        </div>
+      )}
 
       <canvas
         ref={canvasRef}
@@ -460,7 +536,6 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
         style={{ imageRendering: 'pixelated' }}
       />
 
-      {/* Center Feedback Text */}
       {feedback && (
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-30 w-full">
             <h2 className="text-2xl md:text-4xl text-white font-bold stroke-black drop-shadow-[0_4px_0_#000] animate-bounce">
