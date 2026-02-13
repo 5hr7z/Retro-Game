@@ -117,7 +117,7 @@ export const LEVELS: LevelConfig[] = [
       { id: 'exit', type: EntityType.EXIT, pos: { x: 18, y: 13 } },
       { id: 'ChatRoom', type: EntityType.DOOR, pos: { x: 17, y: 13 }, isLocked: true, reqItem: 'ConnectionKey' },
       { id: 'npc_stranger', type: EntityType.NPC, pos: { x: 2, y: 1 }, message: ["Where strangers become friends...", "Find the Key of 'M' to proceed."] },
-      { id: 'ConnectionKey', type: EntityType.KEY, pos: { x: 18, y: 1 } }, 
+      { id: 'ConnectionKey', type: EntityType.KEY, pos: { x: 18, y: 1 }, visibilityRadius: 100 }, 
       { id: 'glitch1', type: EntityType.ENEMY, pos: { x: 8, y: 3 }, spriteKey: 'enemy_glitch', behavior: 'random', speed: 0.05 },
       { id: 'glitch2', type: EntityType.ENEMY, pos: { x: 14, y: 5 }, spriteKey: 'enemy_glitch', behavior: 'random', speed: 0.05 },
       { id: 'glitch3', type: EntityType.ENEMY, pos: { x: 5, y: 12 }, spriteKey: 'enemy_glitch', behavior: 'random', speed: 0.08 }
@@ -173,7 +173,7 @@ export const LEVELS: LevelConfig[] = [
       { id: 'w1', type: EntityType.OBSTACLE, pos: { x: 9, y: 5 }, spriteKey: 'weight' },
       { id: 'w2', type: EntityType.OBSTACLE, pos: { x: 11, y: 5 }, spriteKey: 'weight' },
       { id: 'npc_bro', type: EntityType.NPC, pos: { x: 2, y: 5 }, message: ["Do you even lift, bro?", "Find the elixir of gains."] },
-      { id: 'ProteinShake', type: EntityType.KEY, pos: { x: 18, y: 2 }, color: '#fff' },
+      { id: 'ProteinShake', type: EntityType.KEY, pos: { x: 18, y: 2 }, color: '#fff', visibilityRadius: 100 },
       { id: 'bro1', type: EntityType.ENEMY, pos: { x: 8, y: 2 }, spriteKey: 'enemy_gymbro', behavior: 'patrol_v', patrolRange: 10, speed: 0.15, dir: 1 },
       { id: 'bro2', type: EntityType.ENEMY, pos: { x: 12, y: 12 }, spriteKey: 'enemy_gymbro', behavior: 'patrol_v', patrolRange: 10, speed: 0.15, dir: -1 },
     ]
@@ -225,7 +225,7 @@ export const LEVELS: LevelConfig[] = [
       { id: 'door_biryani', type: EntityType.DOOR, pos: { x: 17, y: 13 }, isLocked: true, reqItem: 'Biryani' },
       { id: 'npc_spice', type: EntityType.NPC, pos: { x: 4, y: 4 }, message: ["Some flags are red.", "Some are delicious.", "Find the comfort food."] },
       ...Array.from({length: 12}, (_, i) => ({ id: `trap_${i}`, type: EntityType.TRAP, pos: { x: 5 + Math.floor(Math.random()*10), y: 3 + Math.floor(Math.random()*10) } })),
-      { id: 'Biryani', type: EntityType.KEY, pos: { x: 18, y: 2 }, spriteKey: 'pineapple' }, // Using Key type for inventory
+      { id: 'Biryani', type: EntityType.KEY, pos: { x: 18, y: 2 }, spriteKey: 'pineapple', visibilityRadius: 100 }, // Using Key type for inventory
     ]
   },
   {

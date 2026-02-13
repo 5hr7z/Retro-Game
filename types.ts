@@ -51,6 +51,9 @@ export interface Entity {
   patrolRange?: number;      // How far they go
   originalPos?: Position;    // For patrolling
   dir?: number;              // Current direction (1 or -1)
+
+  // Visibility
+  visibilityRadius?: number; // Distance in pixels within which entity is visible
 }
 
 export interface LevelConfig {

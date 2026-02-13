@@ -431,9 +431,12 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
           y = entity.pos.y * TILE_SIZE;
       }
 
-      if (currentLevel.fogOfWar && entity.type !== EntityType.EXIT) {
-         // Use the pixel coordinates x/y calculated above
-         const dist = Math.sqrt(Math.pow(x - playerVisualPos.current.x, 2) + Math.pow(y - playerVisualPos.current.y, 2));
+      // Check visibility logic
+      const dist = Math.sqrt(Math.pow(x - playerVisualPos.current.x, 2) + Math.pow(y - playerVisualPos.current.y, 2));
+
+      if (entity.visibilityRadius) {
+          if (dist > entity.visibilityRadius) return;
+      } else if (currentLevel.fogOfWar && entity.type !== EntityType.EXIT) {
          if (dist > 250) return;
       }
       
