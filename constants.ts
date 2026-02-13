@@ -102,7 +102,33 @@ gateExit(map8, 18, 13, 17, 13);
 
 // --- LEVEL 9: MOVIE ---
 const map9 = createRoom(20, 15);
+// Creating a maze structure for the "Studio"
+for(let x=4; x<16; x+=2) map9[4][x] = 1;
+for(let x=4; x<16; x+=2) map9[8][x] = 1;
+map9[6][4] = 1; map9[6][15] = 1;
 gateExit(map9, 18, 2, 17, 2);
+
+// --- LEVEL 10: GAUNTLET ---
+const map10 = createRoom(20, 15);
+// Zig zag path in the sky
+for(let y=1; y<14; y++) {
+    for(let x=1; x<19; x++) {
+        map10[y][x] = 1; // Fill with walls (clouds/pit)
+    }
+}
+// Carve path
+for(let x=2; x<18; x++) map10[13][x] = 0;
+map10[12][17] = 0; map10[11][17] = 0;
+for(let x=17; x>2; x--) map10[11][x] = 0;
+map10[10][3] = 0; map10[9][3] = 0;
+for(let x=3; x<18; x++) map10[9][x] = 0;
+map10[8][17] = 0; map10[7][17] = 0;
+for(let x=17; x>2; x--) map10[7][x] = 0;
+map10[6][3] = 0; map10[5][3] = 0;
+for(let x=3; x<10; x++) map10[5][x] = 0;
+// Arena at top
+for(let y=2; y<5; y++) for(let x=8; x<12; x++) map10[y][x] = 0; 
+
 
 export const LEVELS: LevelConfig[] = [
   {
@@ -259,27 +285,32 @@ export const LEVELS: LevelConfig[] = [
         quizQuestion: "Silent cards on a doorstep. A boombox held high. To me, you are perfect. Name the movie.", 
         quizAnswer: "Love Actually" 
       },
-      { id: 'npc_dance', type: EntityType.NPC, pos: { x: 5, y: 12 }, message: ["Get ready.", "Practice your moves."] },
+      { id: 'npc_dance', type: EntityType.NPC, pos: { x: 5, y: 12 }, message: ["It's not that simple.", "You need the Boombox to play the song.", "Avoid the Cynics!"] },
+      // The Challenge: Get the Boombox while dodging fast enemies
+      { id: 'Boombox', type: EntityType.KEY, pos: { x: 16, y: 8 }, spriteKey: 'boombox' },
+      { id: 'cynic1', type: EntityType.ENEMY, pos: { x: 8, y: 4 }, spriteKey: 'enemy_gymbro', behavior: 'patrol_h', patrolRange: 6, speed: 0.2, dir: 1 },
+      { id: 'cynic2', type: EntityType.ENEMY, pos: { x: 12, y: 8 }, spriteKey: 'enemy_gymbro', behavior: 'patrol_h', patrolRange: 6, speed: 0.25, dir: -1 },
     ]
   },
   {
     id: 10,
-    name: "Lvl 10: 38.6431° N, 34.8289° E",
+    name: "Lvl 10: The Final Gauntlet",
     gridSize: 20,
     background: '#87CEEB', 
-    startPos: { x: 10, y: 13 },
-    mapData: createRoom(20, 15),
+    startPos: { x: 2, y: 13 }, // Bottom Left
+    mapData: map10,
+    fogOfWar: true, // Difficulty Spike
     entities: [
-      // Balloons
-      { id: 'balloon1', type: EntityType.COLLECTIBLE, pos: { x: 4, y: 10 }, spriteKey: 'balloon' },
-      { id: 'balloon2', type: EntityType.COLLECTIBLE, pos: { x: 16, y: 10 }, spriteKey: 'balloon' },
-      { id: 'balloon3', type: EntityType.COLLECTIBLE, pos: { x: 2, y: 5 }, spriteKey: 'balloon' },
-      { id: 'balloon4', type: EntityType.COLLECTIBLE, pos: { x: 18, y: 5 }, spriteKey: 'balloon' },
-      { id: 'balloon5', type: EntityType.COLLECTIBLE, pos: { x: 8, y: 2 }, spriteKey: 'balloon' },
-      { id: 'balloon6', type: EntityType.COLLECTIBLE, pos: { x: 12, y: 2 }, spriteKey: 'balloon' },
+      { id: 'npc_final', type: EntityType.NPC, pos: { x: 3, y: 13 }, message: ["It's a long way up.", "Don't look down.", "The mist hides your demons."] },
       
-      // Madame Spice
-      { id: 'Madame Spice', type: EntityType.NPC, pos: { x: 10, y: 4 }, spriteKey: 'madame_spice', interactable: true }
+      // The Gauntlet of Enemies (Best of All Levels)
+      { id: 'final_bro', type: EntityType.ENEMY, pos: { x: 10, y: 11 }, spriteKey: 'enemy_gymbro', behavior: 'patrol_h', patrolRange: 4, speed: 0.2 },
+      { id: 'final_glitch', type: EntityType.ENEMY, pos: { x: 8, y: 9 }, spriteKey: 'enemy_glitch', behavior: 'patrol_h', patrolRange: 8, speed: 0.3 },
+      { id: 'final_ghost', type: EntityType.ENEMY, pos: { x: 15, y: 7 }, spriteKey: 'enemy_ghost', behavior: 'chase', speed: 0.04 }, // Chases you on the narrow path
+      { id: 'final_ghost2', type: EntityType.ENEMY, pos: { x: 8, y: 5 }, spriteKey: 'enemy_ghost', behavior: 'chase', speed: 0.035 }, 
+
+      // Madame Spice at the peak
+      { id: 'Madame Spice', type: EntityType.NPC, pos: { x: 10, y: 3 }, spriteKey: 'madame_spice', interactable: true }
     ]
   }
 ];

@@ -87,6 +87,15 @@ const createPixelSprite = (color: string, type: string): string => {
       ctx.clearRect(13, 13, 6, 6);
       ctx.fillRect(14, 20, 4, 10);
     }
+    else if (type === 'boombox') {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(4, 8, 24, 16);
+        ctx.fillStyle = '#555'; // Speakers
+        ctx.beginPath(); ctx.arc(10, 16, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(22, 16, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#999'; // Handle
+        ctx.fillRect(8, 4, 16, 4);
+    }
     else if (type === 'door') {
       ctx.fillStyle = '#5c3a21';
       ctx.fillRect(2, 2, 28, 28);
@@ -174,6 +183,7 @@ export const ASSETS = {
     weight: createPixelSprite('', 'weight'),
     balloon: createPixelSprite('#ff77aa', 'balloon'),
     item: createPixelSprite('', 'item'),
+    boombox: createPixelSprite('', 'boombox'),
     enemy_glitch: createPixelSprite('', 'enemy_glitch'),
     enemy_ghost: createPixelSprite('', 'enemy_ghost'),
     enemy_gymbro: createPixelSprite('', 'enemy_gymbro'),
