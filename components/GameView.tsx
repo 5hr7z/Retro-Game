@@ -128,10 +128,10 @@ const GameView: React.FC<GameViewProps> = ({ onGameOver, onExit }) => {
 
   const triggerFinale = () => {
       setDialogue([
-          "Madame Spice: You found me...", 
+          "Madame Spice: Harvey, you made it...", 
+          "Madame Spice: You found me.", 
           "Harvey: I would search every universe for you.", 
-          "Madame Spice: Even the one with pineapple pizza?",
-          "Harvey: Especially that one.",
+          "Madame Spice: I knew you would.",
           "Madame Spice: I love you, my Desi Firangan.",
           "Madame Spice: Happy Valentine's Day! ❤️"
       ]);
