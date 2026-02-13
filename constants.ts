@@ -243,7 +243,7 @@ export const LEVELS: LevelConfig[] = [
         quizAnswer: "Sorry" 
       },
       { id: 'npc_sad', type: EntityType.NPC, pos: { x: 10, y: 10 }, message: ["I didn't mean it.", "Why am I walking backwards?"] },
-       { id: 'regret', type: EntityType.ENEMY, pos: { x: 2, y: 2 }, spriteKey: 'enemy_ghost', behavior: 'chase', speed: 0.02 },
+       { id: 'regret', type: EntityType.ENEMY, pos: { x: 2, y: 2 }, spriteKey: 'enemy_ghost', behavior: 'chase', speed: 0.015 },
     ]
   },
   {
